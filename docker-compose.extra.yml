@@ -1,0 +1,57 @@
+version: "3.9"
+services:
+  openrelik-worker-timesketch:
+    container_name: openrelik-worker-timesketch
+    image: ghcr.io/julianghill/openrelik-worker-timesketch:latest
+    restart: always
+    environment:
+      - REDIS_URL=redis://openrelik-redis:6379
+      - TIMESKETCH_SERVER_URL={https://valueThatItHasToTalkTo}
+      - TIMESKETCH_SERVER_PUBLIC_URL={https://valueThatYouWantInUI}
+      - TIMESKETCH_USERNAME={theUserYouMadeForUploading}
+      - TIMESKETCH_PASSWORD={changeToSomethingSecure}
+      #- REQUESTS_CA_BUNDLE=/etc/openrelik/ca.crt
+    volumes:
+      - ./data:/usr/share/openrelik/data
+      #- ./tls/ca.crt:/etc/openrelik/ca.crt:ro
+    command: "celery --app=src.app worker --task-events --concurrency=1 --loglevel=INFO -Q openrelik-worker-timesketch"
+  
+  openrelik-worker-dissect-ncsc-nl:
+    container_name: openrelik-worker-dissect-ncsc-nl
+    image: ghcr.io/julianghill/openrelik-worker-dissect-ncsc-nl:latest
+    restart: always
+    environment:
+      - REDIS_URL=redis://openrelik-redis:6379
+      - OPENRELIK_PYDEBUG=0
+    volumes:
+      - ./data:/usr/share/openrelik/data
+    command: "celery --app=src.app worker --task-events --concurrency=4 --loglevel=INFO -Q openrelik-worker-dissect-ncsc-nl"
+  
+  openrelik-worker-amcache-evilhunter:
+    container_name: openrelik-worker-amcache-evilhunter
+    image: ghcr.io/julianghill/openrelik-worker-amcache-evilhunter:latest
+    restart: always
+    environment:
+        - REDIS_URL=redis://openrelik-redis:6379
+        - OPENRELIK_PYDEBUG=0
+        # Optional enrichments (set both env and checkbox in task config)
+        - VT_API_KEY=${VT_API_KEY}            # VirusTotal API key
+        - OPENTIP_API_KEY=${OPENTIP_API_KEY}  # Kaspersky OpenTIP API key
+    volumes:
+        - ./data:/usr/share/openrelik/data
+    command: "celery --app=src.app worker --task-events --concurrency=4 --loglevel=INFO -Q openrelik-worker-amcache-evilhunter"
+    # ports:
+    #   - 5678:5678  # For debug (if enabled)
+
+  openrelik-worker-clamav:
+    container_name: openrelik-worker-clamav
+    image: ghcr.io/julianghill/openrelik-worker-clamav:latest
+    restart: always
+    environment:
+      - REDIS_URL=redis://openrelik-redis:6379
+      - OPENRELIK_PYDEBUG=0
+    volumes:
+      - ./data:/usr/share/openrelik/data
+    command: "celery --app=src.app worker --task-events --concurrency=4 --loglevel=INFO -Q openrelik-worker-clamav"
+
+  
